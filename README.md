@@ -75,7 +75,7 @@ Controller 只需要部署一台，建议部署在公网可访问服务器。
 一串命令安装：
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/simplemoitor.git /opt/simplemoitor && cd /opt/simplemoitor && bash controller/install.sh
+git clone https://github.com/jackkay-encrypt/simplemoitor.git /opt/simplemoitor && cd /opt/simplemoitor && bash controller/install.sh
 ```
 
 配置 Bot Token：
@@ -107,7 +107,7 @@ nohup /www/server/panel/pyenv/bin/python3 /opt/simplemoitor/controller/telegram_
 在每台被监控服务器执行一串安装命令：
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/simplemoitor.git /opt/simplemoitor && cd /opt/simplemoitor && bash agent/install.sh http://YOUR_CONTROLLER_IP:8765
+git clone https://github.com/jackkay-encrypt/simplemoitor.git /opt/simplemoitor && cd /opt/simplemoitor && bash agent/install.sh http://YOUR_CONTROLLER_IP:8765
 ```
 
 安装后会自动创建短命令：
@@ -293,7 +293,7 @@ GITHUB_TOKEN="你的GitHub Token" bash scripts/publish_github.sh simplemoitor
 发布成功后，仓库地址格式为：
 
 ```text
-https://github.com/YOUR_GITHUB_USER/simplemoitor
+https://github.com/jackkay-encrypt/simplemoitor
 ```
 
 发布完成后请立即撤销临时 GitHub Token，或至少降低 Token 权限。
