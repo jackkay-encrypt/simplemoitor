@@ -75,7 +75,7 @@ Controller 只需要部署一台，建议部署在公网可访问服务器。
 一串命令安装：
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/server-telegram-monitor.git /opt/server-telegram-monitor && cd /opt/server-telegram-monitor && bash controller/install.sh
+git clone https://github.com/YOUR_GITHUB_USER/simplemoitor.git /opt/simplemoitor && cd /opt/simplemoitor && bash controller/install.sh
 ```
 
 配置 Bot Token：
@@ -87,19 +87,19 @@ export TELEGRAM_BOT_TOKEN="你的Telegram Bot Token"
 或者编辑：
 
 ```bash
-/opt/server-telegram-monitor/controller/config.json
+/opt/simplemoitor/controller/config.json
 ```
 
 启动 Controller：
 
 ```bash
-nohup python3 /opt/server-telegram-monitor/controller/telegram_controller.py >> /opt/server-telegram-monitor/runtime/controller.log 2>&1 &
+nohup python3 /opt/simplemoitor/controller/telegram_controller.py >> /opt/simplemoitor/runtime/controller.log 2>&1 &
 ```
 
 如果使用宝塔环境，也可以使用：
 
 ```bash
-nohup /www/server/panel/pyenv/bin/python3 /opt/server-telegram-monitor/controller/telegram_controller.py >> /opt/server-telegram-monitor/runtime/controller.log 2>&1 &
+nohup /www/server/panel/pyenv/bin/python3 /opt/simplemoitor/controller/telegram_controller.py >> /opt/simplemoitor/runtime/controller.log 2>&1 &
 ```
 
 ### 3. 部署 Agent
@@ -107,7 +107,7 @@ nohup /www/server/panel/pyenv/bin/python3 /opt/server-telegram-monitor/controlle
 在每台被监控服务器执行一串安装命令：
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/server-telegram-monitor.git /opt/server-telegram-monitor && cd /opt/server-telegram-monitor && bash agent/install.sh http://YOUR_CONTROLLER_IP:8765
+git clone https://github.com/YOUR_GITHUB_USER/simplemoitor.git /opt/simplemoitor && cd /opt/simplemoitor && bash agent/install.sh http://YOUR_CONTROLLER_IP:8765
 ```
 
 安装后会自动创建短命令：
@@ -180,19 +180,19 @@ srv_ab12cd34 839201
 等价命令：
 
 ```bash
-python3 /opt/server-telegram-monitor/agent/server_agent.py id
+python3 /opt/simplemoitor/agent/server_agent.py id
 ```
 
 ### 手动运行 Agent 一次
 
 ```bash
-python3 /opt/server-telegram-monitor/agent/server_agent.py --once
+python3 /opt/simplemoitor/agent/server_agent.py --once
 ```
 
 ### 初始化 Controller 数据库
 
 ```bash
-python3 /opt/server-telegram-monitor/controller/telegram_controller.py --init-db
+python3 /opt/simplemoitor/controller/telegram_controller.py --init-db
 ```
 
 ### 健康检查
@@ -254,7 +254,7 @@ pgrep -f telegram_controller.py
 检查日志：
 
 ```bash
-tail -n 100 /opt/server-telegram-monitor/runtime/controller.log
+tail -n 100 /opt/simplemoitor/runtime/controller.log
 ```
 
 ### 服务器不汇报
@@ -268,7 +268,7 @@ crontab -l
 检查 Agent 日志：
 
 ```bash
-tail -n 100 /opt/server-telegram-monitor/runtime/agent.log
+tail -n 100 /opt/simplemoitor/runtime/agent.log
 ```
 
 ### 解绑后仍然汇报
@@ -280,6 +280,23 @@ crontab -l | grep system_health_telegram.py
 ```
 
 正常情况下不应该有输出。
+
+## 发布到 GitHub
+
+本地仓库已提供安全发布脚本，脚本只从环境变量读取 GitHub Token，不会把 Token 写入文件或 remote URL。
+
+```bash
+cd /www/server/panel/script/server-monitor
+GITHUB_TOKEN="你的GitHub Token" bash scripts/publish_github.sh simplemoitor
+```
+
+发布成功后，仓库地址格式为：
+
+```text
+https://github.com/YOUR_GITHUB_USER/simplemoitor
+```
+
+发布完成后请立即撤销临时 GitHub Token，或至少降低 Token 权限。
 
 ## GitHub 上传前检查
 
