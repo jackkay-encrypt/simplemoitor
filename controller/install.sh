@@ -25,11 +25,21 @@ fi
 "$PYTHON_BIN" "$BASE_DIR/controller/telegram_controller.py" --init-db
 
 CRON_LINE="* * * * * $PYTHON_BIN $BASE_DIR/controller/telegram_controller.py >> $BASE_DIR/runtime/controller.log 2>&1"
+LOG_CLEANUP_LINE="7 * * * * $PYTHON_BIN $BASE_DIR/scripts/cleanup_logs.py --runtime-dir $BASE_DIR/runtime --hours 24 >> $BASE_DIR/runtime/log_cleanup.log 2>&1"
 if crontab -l 2>/dev/null | grep -F "$BASE_DIR/controller/telegram_controller.py" >/dev/null 2>&1; then
   echo "Controller crontab already exists."
 else
   (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
   echo "Controller crontab installed."
 fi
+
+if crontab -l 2>/dev/null | grep -F "$BASE_DIR/scripts/cleanup_logs.py" >/dev/null 2>&1; then
+  echo "Log cleanup crontab already exists."
+else
+  (crontab -l 2>/dev/null; echo "$LOG_CLEANUP_LINE") | crontab -
+  echo "Log cleanup crontab installed."
+fi
+
+echo "Local logs retention: 24 hours"
 
 echo "Start manually now with: nohup $PYTHON_BIN $BASE_DIR/controller/telegram_controller.py >> $BASE_DIR/runtime/controller.log 2>&1 &"

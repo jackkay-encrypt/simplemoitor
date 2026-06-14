@@ -65,6 +65,7 @@ http://YOUR_CONTROLLER_IP:8765
 - 生成绑定码
 - 创建 Agent 配置文件
 - 添加 crontab 定时任务
+- 添加本地日志 24 小时保留清理任务
 - 创建快捷命令 `/www/srvid`
 
 ## 获取服务器 ID
@@ -157,7 +158,10 @@ crontab -l
 
 ```text
 * * * * * python3 /simplemoitor/agent/server_agent.py --once >> /simplemoitor/runtime/agent.log 2>&1
+7 * * * * python3 /simplemoitor/scripts/cleanup_logs.py --runtime-dir /simplemoitor/runtime --hours 24 >> /simplemoitor/runtime/log_cleanup.log 2>&1
 ```
+
+日志清理任务每小时执行一次，本地日志只保留最近 24 小时内容。
 
 ## 故障排查
 
@@ -176,7 +180,7 @@ crontab -l
 
 ### 服务器不再汇报
 
-请检查 Agent 日志：
+请检查最近 24 小时内的 Agent 日志：
 
 ```bash
 tail -n 100 /simplemoitor/runtime/agent.log

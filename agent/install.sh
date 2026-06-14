@@ -27,11 +27,21 @@ chmod 755 /www/srvid
 echo "Short srv_id command installed: /www/srvid"
 
 CRON_LINE="* * * * * $PYTHON_BIN $BASE_DIR/agent/server_agent.py --once >> $BASE_DIR/runtime/agent.log 2>&1"
+LOG_CLEANUP_LINE="7 * * * * $PYTHON_BIN $BASE_DIR/scripts/cleanup_logs.py --runtime-dir $BASE_DIR/runtime --hours 24 >> $BASE_DIR/runtime/log_cleanup.log 2>&1"
 if crontab -l 2>/dev/null | grep -F "$BASE_DIR/agent/server_agent.py" >/dev/null 2>&1; then
   echo "Agent crontab already exists."
 else
   (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
   echo "Agent crontab installed."
 fi
+
+if crontab -l 2>/dev/null | grep -F "$BASE_DIR/scripts/cleanup_logs.py" >/dev/null 2>&1; then
+  echo "Log cleanup crontab already exists."
+else
+  (crontab -l 2>/dev/null; echo "$LOG_CLEANUP_LINE") | crontab -
+  echo "Log cleanup crontab installed."
+fi
+
+echo "Local logs retention: 24 hours"
 
 echo "Please click [绑定服务器] in Telegram, then paste the output from: /www/srvid"
