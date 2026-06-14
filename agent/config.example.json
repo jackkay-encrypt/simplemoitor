@@ -1,0 +1,9 @@
+{
+  "server_id": "自动生成，不要手动填写",
+  "bind_code": "自动生成，用于 Telegram /bind",
+  "server_name": "未命名服务器",
+  "report_interval": 300,
+  "poll_interval": 60,
+  "controller_url": "http://YOUR_CONTROLLER_IP:8765",
+  "agent_secret": "自动生成，不要提交到 GitHub"
+}

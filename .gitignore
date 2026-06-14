@@ -1,0 +1,12 @@
+agent/config.json
+controller/config.json
+runtime/*.db
+runtime/*.log
+runtime/*.pid
+runtime/*
+*.log
+*.pid
+.env
+.env.*
+__pycache__/
+*.pyc
