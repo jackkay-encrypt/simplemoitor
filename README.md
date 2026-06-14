@@ -48,7 +48,7 @@
 请在需要监控的服务器上执行下面命令。
 
 ```bash
-git clone https://github.com/jackkay-encrypt/simplemoitor.git /opt/simplemoitor && cd /opt/simplemoitor && bash agent/install.sh http://YOUR_CONTROLLER_IP:8765
+git clone https://github.com/jackkay-encrypt/simplemoitor.git /simplemoitor && cd /simplemoitor && bash agent/install.sh http://YOUR_CONTROLLER_IP:8765
 ```
 
 请把命令中的：
@@ -138,13 +138,13 @@ srv_ab12cd34 839201
 ### 手动运行 Agent 一次
 
 ```bash
-python3 /opt/simplemoitor/agent/server_agent.py --once
+python3 /simplemoitor/agent/server_agent.py --once
 ```
 
 如果是宝塔环境，也可以使用：
 
 ```bash
-/www/server/panel/pyenv/bin/python3 /opt/simplemoitor/agent/server_agent.py --once
+/www/server/panel/pyenv/bin/python3 /simplemoitor/agent/server_agent.py --once
 ```
 
 ### 查看 Agent 定时任务
@@ -156,7 +156,7 @@ crontab -l
 正常情况下会看到类似任务：
 
 ```text
-* * * * * python3 /opt/simplemoitor/agent/server_agent.py --once >> /opt/simplemoitor/runtime/agent.log 2>&1
+* * * * * python3 /simplemoitor/agent/server_agent.py --once >> /simplemoitor/runtime/agent.log 2>&1
 ```
 
 ## 故障排查
@@ -179,13 +179,13 @@ crontab -l
 请检查 Agent 日志：
 
 ```bash
-tail -n 100 /opt/simplemoitor/runtime/agent.log
+tail -n 100 /simplemoitor/runtime/agent.log
 ```
 
 也可以手动运行一次 Agent：
 
 ```bash
-python3 /opt/simplemoitor/agent/server_agent.py --once
+python3 /simplemoitor/agent/server_agent.py --once
 ```
 
 ### 解绑后是否还会汇报
