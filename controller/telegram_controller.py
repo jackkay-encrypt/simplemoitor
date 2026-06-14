@@ -337,14 +337,53 @@ class MonitorController(object):
     def clear_pending(self, chat_id):
         self.store.set_setting(self.pending_key(chat_id), '')
 
+    def is_valid_bind_ip(self, value):
+        value = str(value or '').strip()
+        parts = value.split('.')
+        if len(parts) != 4:
+            return False
+        for part in parts:
+            if not part.isdigit():
+                return False
+            number = int(part)
+            if number < 0 or number > 255:
+                return False
+        return True
+
+    def is_valid_bind_port(self, value):
+        value = str(value or '').strip()
+        if not value.isdigit():
+            return False
+        number = int(value)
+        return number >= 1 and number <= 65535
+
+    def parse_bind_text(self, text):
+        tokens = text.replace(':', ' ').replace('：', ' ').replace('\n', ' ').split()
+        server_index = None
+        for index, token in enumerate(tokens):
+            if token.startswith('srv_'):
+                server_index = index
+                break
+        if server_index is None or server_index < 2 or server_index + 1 >= len(tokens):
+            return None
+        bind_ip = tokens[server_index - 2]
+        bind_port = tokens[server_index - 1]
+        server_id = tokens[server_index]
+        bind_code = tokens[server_index + 1]
+        if not self.is_valid_bind_ip(bind_ip) or not self.is_valid_bind_port(bind_port):
+            return None
+        if not bind_code.isdigit() or len(bind_code) < 4:
+            return None
+        return bind_ip, bind_port, server_id, bind_code
+
     def prompt_bind(self, chat_id):
         self.set_pending(chat_id, 'bind')
         text = '\n'.join([
             '<b>绑定新服务器</b>',
             '',
-            '请把新服务器安装后显示的 server_id 和 bind_code 粘贴给我。',
+            '请把新服务器安装后显示的 IP、端口、srv_id 和 bind_code 粘贴给我。',
             '格式示例：',
-            '<code>srv_ab12cd34 839201</code>'
+            '<code>1.2.3.4 8765 srv_ab12cd34 839201</code>'
         ])
         self.telegram.send_message(chat_id, text, reply_markup=self.main_keyboard())
 
@@ -371,18 +410,12 @@ class MonitorController(object):
         return False
 
     def handle_pending_bind(self, chat_id, text):
-        tokens = text.replace(':', ' ').replace('：', ' ').replace('\n', ' ').split()
-        server_id = None
-        bind_code = None
-        for token in tokens:
-            if token.startswith('srv_'):
-                server_id = token
-            elif token.isdigit() and len(token) >= 4:
-                bind_code = token
-        if not server_id or not bind_code:
-            self.telegram.send_message(chat_id, '没有识别到完整的 server_id 和 bind_code，请重新粘贴。', reply_markup=self.main_keyboard())
+        parsed = self.parse_bind_text(text)
+        if not parsed:
+            self.telegram.send_message(chat_id, '没有识别到完整的 IP、端口、srv_id 和 bind_code，请按格式重新粘贴。\n示例：<code>1.2.3.4 8765 srv_ab12cd34 839201</code>', reply_markup=self.main_keyboard())
             return
-        ok, result = self.store.bind_server(server_id, bind_code, chat_id)
+        bind_ip, bind_port, server_id, bind_code = parsed
+        ok, result = self.store.bind_server(bind_ip, bind_port, server_id, bind_code, chat_id)
         if not ok:
             self.telegram.send_message(chat_id, result, reply_markup=self.main_keyboard())
             return
@@ -433,7 +466,9 @@ class MonitorController(object):
             payload.get('bind_code'),
             payload.get('agent_secret'),
             int(payload.get('report_interval') or 300),
-            payload.get('metrics') or {}
+            payload.get('metrics') or {},
+            payload.get('bind_ip'),
+            payload.get('bind_port')
         )
         return {'ok': ok, 'message': msg}
 
@@ -603,23 +638,25 @@ class MonitorController(object):
             '在服务器执行：',
             '<code>/www/srvid</code>',
             '',
-            '执行后把显示的“Telegram 绑定输入”复制到【绑定服务器】流程里即可。'
+            '执行后把显示的“Telegram 绑定输入”（IP 端口 srv_id bind_code）复制到【绑定服务器】流程里即可。'
         ])
         self.telegram.send_message(chat_id, text, reply_markup=self.main_keyboard())
 
     def cmd_bind(self, chat_id, parts):
-        if len(parts) != 3:
+        parsed = self.parse_bind_text(' '.join(parts[1:]))
+        if not parsed:
             self.prompt_bind(chat_id)
             return
-        ok, result = self.store.bind_server(parts[1], parts[2], chat_id)
+        bind_ip, bind_port, server_id, bind_code = parsed
+        ok, result = self.store.bind_server(bind_ip, bind_port, server_id, bind_code, chat_id)
         if not ok:
             self.telegram.send_message(chat_id, result, reply_markup=self.main_keyboard())
             return
-        fresh = self.store.get_bound_server(parts[1], chat_id)
+        fresh = self.store.get_bound_server(server_id, chat_id)
         self.telegram.send_message(
             chat_id,
-            '绑定成功：{}\n当前汇报间隔：{} 秒'.format(parts[1], fresh.get('report_interval')),
-            reply_markup=self.server_keyboard(parts[1])
+            '绑定成功：{}\n当前汇报间隔：{} 秒'.format(server_id, fresh.get('report_interval')),
+            reply_markup=self.server_keyboard(server_id)
         )
 
     def cmd_list(self, chat_id):

@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS servers (
     server_name TEXT,
     chat_id TEXT,
     bind_code_hash TEXT,
+    bind_ip TEXT,
+    bind_port TEXT,
     agent_secret_hash TEXT NOT NULL,
     report_interval INTEGER NOT NULL DEFAULT 300,
     last_seen INTEGER,
@@ -61,8 +63,18 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 ''')
             conn.commit()
+            self.ensure_server_columns(conn)
         finally:
             conn.close()
+
+    def ensure_server_columns(self, conn):
+        rows = conn.execute('PRAGMA table_info(servers)').fetchall()
+        columns = set([row['name'] for row in rows])
+        if 'bind_ip' not in columns:
+            conn.execute('ALTER TABLE servers ADD COLUMN bind_ip TEXT')
+        if 'bind_port' not in columns:
+            conn.execute('ALTER TABLE servers ADD COLUMN bind_port TEXT')
+        conn.commit()
 
     def get_setting(self, key, default=None):
         conn = self.connect()
@@ -80,11 +92,13 @@ CREATE TABLE IF NOT EXISTS settings (
         finally:
             conn.close()
 
-    def register_server(self, server_id, server_name, bind_code, agent_secret, report_interval=300, status=None):
+    def register_server(self, server_id, server_name, bind_code, agent_secret, report_interval=300, status=None, bind_ip=None, bind_port=None):
         ts = now_ts()
         bind_code_hash = hash_secret(bind_code)
         agent_secret_hash = hash_secret(agent_secret)
         status_json = json.dumps(status or {}, ensure_ascii=False)
+        bind_ip = str(bind_ip or '').strip()
+        bind_port = str(bind_port or '').strip()
         conn = self.connect()
         try:
             row = conn.execute('SELECT * FROM servers WHERE server_id=?', (server_id,)).fetchone()
@@ -92,14 +106,14 @@ CREATE TABLE IF NOT EXISTS settings (
                 if row['agent_secret_hash'] != agent_secret_hash:
                     return False, 'server_id 已存在且密钥不匹配'
                 conn.execute('''
-UPDATE servers SET server_name=?, report_interval=?, last_seen=?, updated_at=?, status_json=?
+UPDATE servers SET server_name=?, bind_ip=?, bind_port=?, report_interval=?, last_seen=?, updated_at=?, status_json=?
 WHERE server_id=?
-''', (server_name, int(report_interval), ts, ts, status_json, server_id))
+''', (server_name, bind_ip, bind_port, int(report_interval), ts, ts, status_json, server_id))
             else:
                 conn.execute('''
-INSERT INTO servers(server_id, server_name, chat_id, bind_code_hash, agent_secret_hash, report_interval, last_seen, created_at, updated_at, bound_at, status_json)
-VALUES(?,?,?,?,?,?,?,?,?,?,?)
-''', (server_id, server_name, None, bind_code_hash, agent_secret_hash, int(report_interval), ts, ts, ts, None, status_json))
+INSERT INTO servers(server_id, server_name, chat_id, bind_code_hash, bind_ip, bind_port, agent_secret_hash, report_interval, last_seen, created_at, updated_at, bound_at, status_json)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+''', (server_id, server_name, None, bind_code_hash, bind_ip, bind_port, agent_secret_hash, int(report_interval), ts, ts, ts, None, status_json))
             conn.commit()
             return True, 'ok'
         finally:
@@ -117,7 +131,9 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?)
         finally:
             conn.close()
 
-    def bind_server(self, server_id, bind_code, chat_id):
+    def bind_server(self, bind_ip, bind_port, server_id, bind_code, chat_id):
+        bind_ip = str(bind_ip or '').strip()
+        bind_port = str(bind_port or '').strip()
         conn = self.connect()
         try:
             row = conn.execute('SELECT * FROM servers WHERE server_id=?', (server_id,)).fetchone()
@@ -125,6 +141,12 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?)
                 return False, '未找到该服务器，请确认 Agent 已启动注册。'
             if row['chat_id']:
                 return False, '该服务器已经绑定。'
+            if not row['bind_ip'] or not row['bind_port']:
+                return False, '服务器 IP/端口尚未同步，请等待 Agent 下一次注册后重试。'
+            if str(row['bind_ip']) != bind_ip:
+                return False, '服务器 IP 不匹配。'
+            if str(row['bind_port']) != bind_port:
+                return False, '服务器端口不匹配。'
             if row['bind_code_hash'] != hash_secret(bind_code):
                 return False, '绑定码错误。'
             ts = now_ts()

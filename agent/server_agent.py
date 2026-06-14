@@ -16,7 +16,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from common.metrics import build_status_payload
+from common.metrics import build_status_payload, get_primary_ip
 
 DEFAULT_CONFIG_PATH = os.path.join(BASE_DIR, 'agent', 'config.json')
 DEFAULT_LOG_PATH = os.path.join(BASE_DIR, 'runtime', 'agent.log')
@@ -59,7 +59,28 @@ def make_bind_code():
     return str(secrets.randbelow(900000) + 100000)
 
 
-def init_config(path, controller_url=None, server_name=None, show_bind_info=True):
+def get_default_bind_port(controller_url):
+    parsed = urllib.parse.urlparse(controller_url or '')
+    if parsed.port:
+        return str(parsed.port)
+    if parsed.scheme == 'https':
+        return '443'
+    if parsed.scheme == 'http':
+        return '80'
+    return '8765'
+
+
+def normalize_bind_port(value):
+    port = str(value or '').strip()
+    if not port.isdigit():
+        raise ValueError('绑定端口必须是数字')
+    port_number = int(port)
+    if port_number < 1 or port_number > 65535:
+        raise ValueError('绑定端口必须在 1-65535 之间')
+    return str(port_number)
+
+
+def init_config(path, controller_url=None, server_name=None, bind_ip=None, bind_port=None, show_bind_info=True):
     if os.path.exists(path):
         config = load_json(path)
     else:
@@ -78,6 +99,18 @@ def init_config(path, controller_url=None, server_name=None, show_bind_info=True
         config['controller_url'] = controller_url.rstrip('/')
         changed = True
     config.setdefault('controller_url', 'http://127.0.0.1:8765')
+    if bind_ip:
+        config['bind_ip'] = str(bind_ip).strip()
+        changed = True
+    if bind_port:
+        config['bind_port'] = normalize_bind_port(bind_port)
+        changed = True
+    if not config.get('bind_ip'):
+        config['bind_ip'] = get_primary_ip()
+        changed = True
+    if not config.get('bind_port'):
+        config['bind_port'] = get_default_bind_port(config.get('controller_url'))
+        changed = True
     config.setdefault('server_name', server_name or socket.gethostname())
     config.setdefault('report_interval', 300)
     config.setdefault('poll_interval', 60)
@@ -90,15 +123,19 @@ def init_config(path, controller_url=None, server_name=None, show_bind_info=True
 
 
 def print_bind_info(config):
+    print('bind_ip: {}'.format(config.get('bind_ip')))
+    print('bind_port: {}'.format(config.get('bind_port')))
     print('server_id: {}'.format(config.get('server_id')))
     print('bind_code: {}'.format(config.get('bind_code')))
-    print('Telegram 绑定命令: /bind {} {}'.format(config.get('server_id'), config.get('bind_code')))
+    print('Telegram 绑定命令: /bind {} {} {} {}'.format(config.get('bind_ip'), config.get('bind_port'), config.get('server_id'), config.get('bind_code')))
 
 
 def print_server_id_info(config):
+    print('bind_ip: {}'.format(config.get('bind_ip')))
+    print('bind_port: {}'.format(config.get('bind_port')))
     print('srv_id: {}'.format(config.get('server_id')))
     print('bind_code: {}'.format(config.get('bind_code')))
-    print('Telegram 绑定输入: {} {}'.format(config.get('server_id'), config.get('bind_code')))
+    print('Telegram 绑定输入: {} {} {} {}'.format(config.get('bind_ip'), config.get('bind_port'), config.get('server_id'), config.get('bind_code')))
 
 
 def api_request(config, path, payload=None, auth=True, timeout=20):
@@ -121,6 +158,8 @@ def register(config):
     payload = {
         'server_id': config['server_id'],
         'bind_code': config['bind_code'],
+        'bind_ip': config.get('bind_ip'),
+        'bind_port': config.get('bind_port'),
         'agent_secret': config['agent_secret'],
         'server_name': config.get('server_name'),
         'report_interval': int(config.get('report_interval') or 300),
@@ -229,6 +268,8 @@ def main():
     parser.add_argument('--init-config', action='store_true')
     parser.add_argument('--controller-url', default=None)
     parser.add_argument('--server-name', default=None)
+    parser.add_argument('--bind-ip', default=None)
+    parser.add_argument('--bind-port', default=None)
     parser.add_argument('--print-bind', action='store_true')
     parser.add_argument('--show-id', action='store_true')
     parser.add_argument('--once', action='store_true')
@@ -236,7 +277,7 @@ def main():
     args = parser.parse_args()
 
     if args.init_config:
-        init_config(args.config, controller_url=args.controller_url, server_name=args.server_name, show_bind_info=True)
+        init_config(args.config, controller_url=args.controller_url, server_name=args.server_name, bind_ip=args.bind_ip, bind_port=args.bind_port, show_bind_info=True)
         return 0
     if args.print_bind or args.command == 'bind-info':
         print_bind_info(init_config(args.config, show_bind_info=False))

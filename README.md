@@ -7,7 +7,7 @@
 ## 功能说明
 
 - 自动采集服务器 CPU、负载、内存、IP、主机名、运行时长等信息
-- 每台服务器自动生成唯一 `srv_id` 和绑定码
+- 每台服务器自动生成唯一 `srv_id`、绑定码，并使用 `IP + 端口 + srv_id + bind_code` 四参数绑定
 - 支持通过 Telegram 按钮绑定、解绑和管理服务器
 - 支持设置服务器备注名称
 - 支持设置服务器状态汇报间隔
@@ -48,7 +48,7 @@
 请在需要监控的服务器上执行下面命令。
 
 ```bash
-git clone https://github.com/jackkay-encrypt/simplemoitor.git /simplemoitor && cd /simplemoitor && bash agent/install.sh http://YOUR_CONTROLLER_IP:8765
+git clone https://github.com/jackkay-encrypt/simplemoitor.git /simplemoitor && cd /simplemoitor && bash agent/install.sh http://YOUR_CONTROLLER_IP:8765 CUSTOM_BIND_PORT
 ```
 
 请把命令中的：
@@ -57,12 +57,13 @@ git clone https://github.com/jackkay-encrypt/simplemoitor.git /simplemoitor && c
 http://YOUR_CONTROLLER_IP:8765
 ```
 
-替换为服务方提供的 Controller 地址。
+替换为服务方提供的 Controller 地址；把 `CUSTOM_BIND_PORT` 替换为本服务器自定义绑定端口，例如 `22018`。不同服务器可使用不同端口，避免全部服务器使用同一个固定端口。
 
 安装完成后，程序会自动：
 
 - 生成当前服务器的 `srv_id`
 - 生成绑定码
+- 保存绑定 IP 和自定义绑定端口
 - 创建 Agent 配置文件
 - 添加 crontab 定时任务
 - 添加本地日志 24 小时保留清理任务
@@ -79,15 +80,17 @@ http://YOUR_CONTROLLER_IP:8765
 输出示例：
 
 ```text
+bind_ip: 1.2.3.4
+bind_port: 22018
 srv_id: srv_ab12cd34
 bind_code: 839201
-Telegram 绑定输入: srv_ab12cd34 839201
+Telegram 绑定输入: 1.2.3.4 22018 srv_ab12cd34 839201
 ```
 
 请复制最后一行中的绑定输入：
 
 ```text
-srv_ab12cd34 839201
+1.2.3.4 22018 srv_ab12cd34 839201
 ```
 
 ## 在 Telegram 机器人里绑定服务器
@@ -96,7 +99,7 @@ srv_ab12cd34 839201
 
 1. 点击【服务器列表】
 2. 点击【绑定服务器】
-3. 粘贴 `/www/srvid` 输出的“Telegram 绑定输入”
+3. 粘贴 `/www/srvid` 输出的“Telegram 绑定输入”，格式为 `IP 端口 srv_id bind_code`
 4. 绑定成功后，服务器会出现在你的服务器列表中
 
 绑定后，只有当前 Telegram 用户可以看到这台服务器。

@@ -10,13 +10,22 @@ if [ -z "${PYTHON_BIN:-}" ]; then
   fi
 fi
 CONTROLLER_URL="${1:-http://127.0.0.1:8765}"
+BIND_PORT="${BIND_PORT:-${2:-}}"
+BIND_IP="${BIND_IP:-${3:-}}"
 
 if [ -z "$PYTHON_BIN" ]; then
   echo "python3 not found. Please install Python 3 first."
   exit 1
 fi
 
-"$PYTHON_BIN" "$BASE_DIR/agent/server_agent.py" --init-config --controller-url "$CONTROLLER_URL"
+INIT_ARGS=(--init-config --controller-url "$CONTROLLER_URL")
+if [ -n "$BIND_PORT" ]; then
+  INIT_ARGS+=(--bind-port "$BIND_PORT")
+fi
+if [ -n "$BIND_IP" ]; then
+  INIT_ARGS+=(--bind-ip "$BIND_IP")
+fi
+"$PYTHON_BIN" "$BASE_DIR/agent/server_agent.py" "${INIT_ARGS[@]}"
 
 cat > /www/srvid <<EOF
 #!/bin/bash
