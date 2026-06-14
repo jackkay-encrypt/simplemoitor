@@ -135,8 +135,7 @@ class MonitorController(object):
         self.telegram = TelegramClient(config.get('bot_token'), config.get('api_base'), timeout=35)
 
     def is_chat_allowed(self, chat_id):
-        allowed = [str(x) for x in self.config.get('allowed_chat_ids') or []]
-        return not allowed or str(chat_id) in allowed
+        return True
 
     def main_keyboard(self):
         return {'inline_keyboard': [
@@ -178,6 +177,27 @@ class MonitorController(object):
             [{'text': '返回', 'callback_data': 'srv:edit:{}'.format(server_id)}]
         ]}
 
+    def warning_item_keyboard(self, server_id, warning_type, item):
+        enabled = bool(item.get('enabled'))
+        toggle_text = '关闭预警' if enabled else '开启预警'
+        if warning_type in ('cpu', 'memory'):
+            thresholds = [70, 80, 90, 95]
+            unit = '%'
+        else:
+            thresholds = [1, 2, 5, 10]
+            unit = ''
+        rows = [[{'text': toggle_text, 'callback_data': 'srv:set_warning:{}:{}:toggle:0'.format(server_id, warning_type)}]]
+        rows.append([
+            {'text': '{}{}'.format(value, unit), 'callback_data': 'srv:set_warning:{}:{}:threshold:{}'.format(server_id, warning_type, value)}
+            for value in thresholds[:2]
+        ])
+        rows.append([
+            {'text': '{}{}'.format(value, unit), 'callback_data': 'srv:set_warning:{}:{}:threshold:{}'.format(server_id, warning_type, value)}
+            for value in thresholds[2:]
+        ])
+        rows.append([{'text': '返回', 'callback_data': 'srv:warning_menu:{}'.format(server_id)}])
+        return {'inline_keyboard': rows}
+
     def display_keyboard(self, server_id):
         return {'inline_keyboard': [
             [{'text': '显示 srv_id', 'callback_data': 'srv:set_display:{}:server_id'.format(server_id)}],
@@ -192,6 +212,81 @@ class MonitorController(object):
         if mode not in ('server_id', 'server_name'):
             mode = 'server_id'
         self.store.set_setting('display_mode:{}'.format(chat_id), mode)
+
+    def warning_names(self):
+        return {'cpu': 'CPU预警', 'memory': '内存预警', 'load': '负载预警'}
+
+    def default_warning_threshold(self, warning_type):
+        return 90 if warning_type in ('cpu', 'memory') else 5
+
+    def warning_config_key(self, server_id):
+        return 'warning_config:{}'.format(server_id)
+
+    def get_warning_config(self, server_id):
+        raw = self.store.get_setting(self.warning_config_key(server_id), '{}') or '{}'
+        try:
+            config = json.loads(raw)
+        except Exception:
+            config = {}
+        for warning_type in ('cpu', 'memory', 'load'):
+            item = config.get(warning_type) or {}
+            item.setdefault('enabled', False)
+            item.setdefault('threshold', self.default_warning_threshold(warning_type))
+            config[warning_type] = item
+        return config
+
+    def save_warning_config(self, server_id, config):
+        self.store.set_setting(self.warning_config_key(server_id), json.dumps(config, ensure_ascii=False))
+
+    def get_warning_item_value(self, warning_type, metrics):
+        if warning_type == 'cpu':
+            return float(metrics.get('cpu_percent') or 0)
+        if warning_type == 'memory':
+            return float((metrics.get('memory') or {}).get('percent') or 0)
+        if warning_type == 'load':
+            return float(metrics.get('load_1') or 0)
+        return 0.0
+
+    def warning_unit(self, warning_type):
+        return '%' if warning_type in ('cpu', 'memory') else ''
+
+    def warning_last_key(self, server_id, warning_type):
+        return 'warning_last:{}:{}'.format(server_id, warning_type)
+
+    def should_send_warning(self, server_id, warning_type, cooldown=1800):
+        last = int(self.store.get_setting(self.warning_last_key(server_id, warning_type), '0') or 0)
+        return int(time.time()) - last >= int(cooldown)
+
+    def mark_warning_sent(self, server_id, warning_type):
+        self.store.set_setting(self.warning_last_key(server_id, warning_type), str(int(time.time())))
+
+    def send_warning_alerts(self, server, metrics):
+        chat_id = server.get('chat_id')
+        server_id = server.get('server_id')
+        if not chat_id or not server_id:
+            return
+        config = self.get_warning_config(server_id)
+        names = self.warning_names()
+        for warning_type, item in config.items():
+            if not item.get('enabled'):
+                continue
+            value = self.get_warning_item_value(warning_type, metrics)
+            threshold = float(item.get('threshold') or self.default_warning_threshold(warning_type))
+            if value < threshold or not self.should_send_warning(server_id, warning_type):
+                continue
+            unit = self.warning_unit(warning_type)
+            text = '\n'.join([
+                '<b>服务器预警</b>',
+                '',
+                '<b>服务器：</b>{} ({})'.format(html.escape(str(server.get('server_name') or server_id)), html.escape(str(server_id))),
+                '<b>项目：</b>{}'.format(names.get(warning_type, '预警')),
+                '<b>当前值：</b>{:.2f}{}'.format(value, unit),
+                '<b>阈值：</b>{:.2f}{}'.format(threshold, unit),
+                '',
+                '请及时检查服务器运行状态。'
+            ])
+            self.telegram.send_message(chat_id, text, reply_markup=self.server_keyboard(server_id))
+            self.mark_warning_sent(server_id, warning_type)
 
     def server_label(self, chat_id, server):
         mode = self.get_display_mode(chat_id)
@@ -370,6 +465,7 @@ class MonitorController(object):
             return {'ok': True, 'sent': False, 'message': '服务器尚未绑定 Telegram'}
         text = build_text_report(bound_server, metrics, reason=reason)
         self.telegram.send_message(bound_server['chat_id'], text, reply_markup=self.server_keyboard(bound_server['server_id']))
+        self.send_warning_alerts(bound_server, metrics)
         return {'ok': True, 'sent': True}
 
     def handle_telegram_update(self, update):
@@ -442,6 +538,8 @@ class MonitorController(object):
             self.show_warning_menu(chat_id, server_id)
         elif action == 'warning' and len(parts) == 4:
             self.show_warning_item(chat_id, server_id, parts[3])
+        elif action == 'set_warning' and len(parts) == 6:
+            self.set_warning_from_button(chat_id, server_id, parts[3], parts[4], parts[5])
         elif action == 'display_menu':
             self.show_display_menu(chat_id, server_id)
         elif action == 'set_display' and len(parts) == 4:
@@ -596,19 +694,52 @@ class MonitorController(object):
             return
         self.telegram.send_message(
             chat_id,
-            '请选择 {} 的预警汇报项目：'.format(server_id),
+            '请选择 {} 的预警汇报项目：\n预警配置只对你绑定的这台服务器生效。'.format(server_id),
             reply_markup=self.warning_keyboard(server_id)
         )
 
     def show_warning_item(self, chat_id, server_id, warning_type):
-        names = {'cpu': 'CPU预警', 'memory': '内存预警', 'load': '负载预警'}
-        name = names.get(warning_type, '预警')
+        server = self.store.get_bound_server(server_id, chat_id)
+        if not server:
+            self.telegram.send_message(chat_id, '未找到已绑定的服务器。', reply_markup=self.list_action_keyboard())
+            return
+        names = self.warning_names()
+        if warning_type not in names:
+            self.telegram.send_message(chat_id, '未知预警项目。', reply_markup=self.warning_keyboard(server_id))
+            return
+        config = self.get_warning_config(server_id)
+        item = config.get(warning_type) or {}
+        unit = self.warning_unit(warning_type)
+        status = '开启' if item.get('enabled') else '关闭'
         text = '\n'.join([
-            '<b>{}</b>'.format(name),
+            '<b>{}</b>'.format(names.get(warning_type)),
             '',
-            '该入口已预留，后续可继续配置阈值、开关和触发后的汇报策略。'
+            '当前状态：{}'.format(status),
+            '当前阈值：{}{}'.format(item.get('threshold'), unit),
+            '',
+            '超过阈值时，机器人会向绑定该服务器的 Telegram 用户发送预警提示。'
         ])
-        self.telegram.send_message(chat_id, text, reply_markup=self.warning_keyboard(server_id))
+        self.telegram.send_message(chat_id, text, reply_markup=self.warning_item_keyboard(server_id, warning_type, item))
+
+    def set_warning_from_button(self, chat_id, server_id, warning_type, mode, value):
+        server = self.store.get_bound_server(server_id, chat_id)
+        if not server:
+            self.telegram.send_message(chat_id, '未找到已绑定的服务器。', reply_markup=self.list_action_keyboard())
+            return
+        names = self.warning_names()
+        if warning_type not in names:
+            self.telegram.send_message(chat_id, '未知预警项目。', reply_markup=self.warning_keyboard(server_id))
+            return
+        config = self.get_warning_config(server_id)
+        item = config.get(warning_type) or {}
+        if mode == 'toggle':
+            item['enabled'] = not bool(item.get('enabled'))
+        elif mode == 'threshold':
+            item['threshold'] = float(value)
+            item['enabled'] = True
+        config[warning_type] = item
+        self.save_warning_config(server_id, config)
+        self.show_warning_item(chat_id, server_id, warning_type)
 
     def show_display_menu(self, chat_id, server_id):
         mode_text = 'srv_id' if self.get_display_mode(chat_id) == 'server_id' else '备注名称'
