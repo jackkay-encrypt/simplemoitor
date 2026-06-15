@@ -9,7 +9,7 @@ if [ -z "${PYTHON_BIN:-}" ]; then
     PYTHON_BIN="$(command -v python3)"
   fi
 fi
-CONTROLLER_URL="${1:-https://simple.robot.lsmodjeskostatic666.com}"
+CONTROLLER_URL="${1:-http://127.0.0.1:8765}"
 BIND_PORT="${BIND_PORT:-${2:-}}"
 BIND_IP="${BIND_IP:-${3:-}}"
 
