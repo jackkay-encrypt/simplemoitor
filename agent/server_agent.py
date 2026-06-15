@@ -11,12 +11,17 @@ import time
 import traceback
 import urllib.parse
 import urllib.request
+import ssl
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from common.metrics import build_status_payload, get_primary_ip
+
+_SSL_CTX = ssl.create_default_context()
+_SSL_CTX.check_hostname = False
+_SSL_CTX.verify_mode = ssl.CERT_NONE
 
 DEFAULT_CONFIG_PATH = os.path.join(BASE_DIR, 'agent', 'config.json')
 DEFAULT_LOG_PATH = os.path.join(BASE_DIR, 'runtime', 'agent.log')
@@ -154,7 +159,7 @@ def api_request(config, path, payload=None, auth=True, timeout=20):
         headers['X-Server-Id'] = str(config.get('server_id'))
         headers['X-Agent-Secret'] = str(config.get('agent_secret'))
     request = urllib.request.Request(url, data=data, headers=headers, method='POST')
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with urllib.request.urlopen(request, timeout=timeout, context=_SSL_CTX) as response:
         body = response.read().decode('utf-8')
     result = json.loads(body)
     if not result.get('ok'):
