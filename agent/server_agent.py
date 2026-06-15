@@ -132,19 +132,15 @@ def init_config(path, controller_url=None, server_name=None, bind_ip=None, bind_
 
 
 def print_bind_info(config):
-    print('bind_ip: {}'.format(config.get('bind_ip')))
-    print('bind_port: {}'.format(config.get('bind_port')))
     print('server_id: {}'.format(config.get('server_id')))
     print('bind_code: {}'.format(config.get('bind_code')))
-    print('Telegram 绑定命令: /bind {} {} {} {}'.format(config.get('bind_ip'), config.get('bind_port'), config.get('server_id'), config.get('bind_code')))
+    print('Telegram 绑定命令: /bind {} {}'.format(config.get('server_id'), config.get('bind_code')))
 
 
 def print_server_id_info(config):
-    print('bind_ip: {}'.format(config.get('bind_ip')))
-    print('bind_port: {}'.format(config.get('bind_port')))
     print('srv_id: {}'.format(config.get('server_id')))
     print('bind_code: {}'.format(config.get('bind_code')))
-    print('Telegram 绑定输入: {} {} {} {}'.format(config.get('bind_ip'), config.get('bind_port'), config.get('server_id'), config.get('bind_code')))
+    print('Telegram 绑定输入: {} {}'.format(config.get('server_id'), config.get('bind_code')))
 
 
 def api_request(config, path, payload=None, auth=True, timeout=20):
