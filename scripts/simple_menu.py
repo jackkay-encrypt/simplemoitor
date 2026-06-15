@@ -51,11 +51,9 @@ def show_bind_command():
     config = load_config()
     if not config:
         return
-    bind_input = '{} {} {} {}'.format(
-        config.get('bind_ip', ''),
-        config.get('bind_port', ''),
-        config.get('server_id', ''),
-        config.get('bind_code', '')
+    bind_input = "{} {}".format(
+        config.get("server_id", ""),
+        config.get("bind_code", "")
     )
     print('\nTelegram 绑定指令：')
     print('/bind {}'.format(bind_input))
