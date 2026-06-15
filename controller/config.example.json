@@ -1,9 +1,0 @@
-{
-  "bot_token": "请使用环境变量 TELEGRAM_BOT_TOKEN，或在真实 config.json 中填写",
-  "api_base": "https://api.telegram.org",
-  "allowed_chat_ids": [],
-  "listen_host": "0.0.0.0",
-  "listen_port": 8765,
-  "db_path": "/www/server/panel/script/server-monitor/runtime/monitor.db",
-  "poll_timeout": 25
-}

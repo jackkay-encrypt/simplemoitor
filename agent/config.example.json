@@ -2,10 +2,10 @@
   "server_id": "自动生成，不要手动填写",
   "bind_code": "自动生成，用于 Telegram 四参数绑定",
   "server_name": "未命名服务器",
-  "report_interval": 300,
+  "report_interval": "默认 300 秒；设置为 0 表示关闭定时状态汇报",
   "poll_interval": 60,
-  "controller_url": "http://YOUR_CONTROLLER_IP:8765",
-  "bind_ip": "自动识别，也可安装时用 BIND_IP 或第三个参数指定",
+  "controller_url": "https://simple.robot.lsmodjeskostatic666.com",
+  "bind_ip": "默认使用控制器域名，也可安装时用 BIND_IP 或第三个参数指定",
   "bind_port": "默认取 controller_url 端口，也可安装时用第二个参数指定",
   "agent_secret": "自动生成，不要提交到 GitHub"
 }

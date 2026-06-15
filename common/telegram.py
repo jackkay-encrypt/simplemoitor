@@ -16,12 +16,13 @@ class TelegramClient(object):
     def api_url(self, method):
         return '{}/bot{}/{}'.format(self.api_base, self.bot_token, method)
 
-    def request(self, method, data=None):
+    def request(self, method, data=None, timeout=None):
         payload = None
         if data is not None:
             payload = urllib.parse.urlencode(data).encode('utf-8')
         request = urllib.request.Request(self.api_url(method), data=payload, method='POST' if payload else 'GET')
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
+        request_timeout = int(timeout or self.timeout)
+        with urllib.request.urlopen(request, timeout=request_timeout) as response:
             body = response.read().decode('utf-8')
         result = json.loads(body)
         if not result.get('ok'):
@@ -29,10 +30,11 @@ class TelegramClient(object):
         return result.get('result')
 
     def get_updates(self, offset=None, timeout=25):
-        data = {'timeout': int(timeout)}
+        poll_timeout = int(timeout)
+        data = {'timeout': poll_timeout}
         if offset:
             data['offset'] = int(offset)
-        return self.request('getUpdates', data)
+        return self.request('getUpdates', data, timeout=poll_timeout + 5)
 
     def send_message(self, chat_id, text, parse_mode='HTML', disable_notification=False, reply_markup=None):
         data = {

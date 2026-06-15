@@ -59,6 +59,14 @@ def make_bind_code():
     return str(secrets.randbelow(900000) + 100000)
 
 
+def get_default_bind_host(controller_url):
+    parsed = urllib.parse.urlparse(controller_url or '')
+    host = parsed.hostname or ''
+    if host and host not in ('127.0.0.1', 'localhost'):
+        return host
+    return get_primary_ip()
+
+
 def get_default_bind_port(controller_url):
     parsed = urllib.parse.urlparse(controller_url or '')
     if parsed.port:
@@ -106,7 +114,7 @@ def init_config(path, controller_url=None, server_name=None, bind_ip=None, bind_
         config['bind_port'] = normalize_bind_port(bind_port)
         changed = True
     if not config.get('bind_ip'):
-        config['bind_ip'] = get_primary_ip()
+        config['bind_ip'] = get_default_bind_host(config.get('controller_url'))
         changed = True
     if not config.get('bind_port'):
         config['bind_port'] = get_default_bind_port(config.get('controller_url'))
@@ -162,7 +170,7 @@ def register(config):
         'bind_port': config.get('bind_port'),
         'agent_secret': config['agent_secret'],
         'server_name': config.get('server_name'),
-        'report_interval': int(config.get('report_interval') or 300),
+        'report_interval': int(config.get('report_interval') if config.get('report_interval') is not None else 300),
         'metrics': build_status_payload()
     }
     result = api_request(config, '/api/register', payload, auth=False)
@@ -198,7 +206,7 @@ def apply_server_config(config, result, config_path=DEFAULT_CONFIG_PATH):
     if result.get('server_name') and result.get('server_name') != config.get('server_name'):
         config['server_name'] = result.get('server_name')
         changed = True
-    if result.get('report_interval') and int(result.get('report_interval')) != int(config.get('report_interval') or 300):
+    if 'report_interval' in result and result.get('report_interval') is not None and int(result.get('report_interval')) != int(config.get('report_interval') if config.get('report_interval') is not None else 300):
         config['report_interval'] = int(result.get('report_interval'))
         changed = True
     if 'bound' in result and bool(result.get('bound')) != bool(config.get('bound')):
@@ -219,7 +227,10 @@ def handle_commands(config, commands, config_path=DEFAULT_CONFIG_PATH):
                 continue
             report(config, reason=payload.get('reason') or 'manual')
         elif command == 'set_interval':
-            config['report_interval'] = int(payload.get('report_interval') or config.get('report_interval') or 300)
+            if 'report_interval' in payload and payload.get('report_interval') is not None:
+                config['report_interval'] = int(payload.get('report_interval'))
+            else:
+                config['report_interval'] = int(config.get('report_interval') or 300)
             should_save = True
             write_log('已更新汇报间隔：{} 秒'.format(config['report_interval']))
         elif command == 'rename':
@@ -237,11 +248,15 @@ def run_once(config_path):
     commands = pull_commands(config, config_path)
     handle_commands(config, commands, config_path)
     now = int(time.time())
-    report_interval = max(int(config.get('report_interval') or 300), 60)
+    report_interval = int(config.get('report_interval') if config.get('report_interval') is not None else 300)
     last_report_at = int(config.get('last_report_at') or 0)
     if not config.get('bound'):
         write_log('服务器未绑定 Telegram，跳过定时状态汇报')
         return True
+    if report_interval == 0:
+        write_log('定时状态汇报已关闭')
+        return True
+    report_interval = max(report_interval, 60)
     if now - last_report_at >= report_interval:
         report(config, reason='scheduled')
         config['last_report_at'] = now

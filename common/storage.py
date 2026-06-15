@@ -61,6 +61,15 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+CREATE TABLE IF NOT EXISTS feedback_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    reply TEXT,
+    status TEXT NOT NULL DEFAULT 'unread',
+    created_at INTEGER NOT NULL,
+    replied_at INTEGER
+);
 ''')
             conn.commit()
             self.ensure_server_columns(conn)
@@ -105,10 +114,16 @@ CREATE TABLE IF NOT EXISTS settings (
             if row:
                 if row['agent_secret_hash'] != agent_secret_hash:
                     return False, 'server_id 已存在且密钥不匹配'
-                conn.execute('''
-UPDATE servers SET server_name=?, bind_ip=?, bind_port=?, report_interval=?, last_seen=?, updated_at=?, status_json=?
+                if row['chat_id']:
+                    conn.execute('''
+UPDATE servers SET server_name=?, bind_ip=?, bind_port=?, last_seen=?, updated_at=?, status_json=?
 WHERE server_id=?
-''', (server_name, bind_ip, bind_port, int(report_interval), ts, ts, status_json, server_id))
+''', (server_name, bind_ip, bind_port, ts, ts, status_json, server_id))
+                else:
+                    conn.execute('''
+UPDATE servers SET server_name=?, bind_code_hash=?, bind_ip=?, bind_port=?, report_interval=?, last_seen=?, updated_at=?, status_json=?
+WHERE server_id=?
+''', (server_name, bind_code_hash, bind_ip, bind_port, int(report_interval), ts, ts, status_json, server_id))
             else:
                 conn.execute('''
 INSERT INTO servers(server_id, server_name, chat_id, bind_code_hash, bind_ip, bind_port, agent_secret_hash, report_interval, last_seen, created_at, updated_at, bound_at, status_json)
@@ -191,7 +206,9 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
             conn.close()
 
     def update_interval(self, server_id, chat_id, seconds):
-        seconds = max(int(seconds), 60)
+        seconds = int(seconds)
+        if seconds < 0 or (seconds > 0 and seconds < 60):
+            return False, '汇报间隔必须为 0（关闭定时汇报）或不少于 60 秒。'
         server = self.get_bound_server(server_id, chat_id)
         if not server:
             return False, '未找到已绑定的服务器。'
@@ -264,3 +281,65 @@ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
     def update_report(self, server_id, metrics):
         self.update_heartbeat(server_id, metrics)
         return self.get_bound_server(server_id)
+
+    def add_feedback_message(self, chat_id, content):
+        ts = now_ts()
+        conn = self.connect()
+        try:
+            cursor = conn.execute('''
+INSERT INTO feedback_messages(chat_id, content, status, created_at)
+VALUES(?,?,?,?)
+''', (str(chat_id), str(content or '').strip(), 'unread', ts))
+            conn.commit()
+            return cursor.lastrowid
+        finally:
+            conn.close()
+
+    def feedback_count(self, status=None):
+        conn = self.connect()
+        try:
+            if status:
+                row = conn.execute('SELECT COUNT(*) AS count FROM feedback_messages WHERE status=?', (status,)).fetchone()
+            else:
+                row = conn.execute('SELECT COUNT(*) AS count FROM feedback_messages').fetchone()
+            return int(row['count'] or 0)
+        finally:
+            conn.close()
+
+    def feedback_user_count(self, status=None):
+        conn = self.connect()
+        try:
+            if status:
+                row = conn.execute('SELECT COUNT(DISTINCT chat_id) AS count FROM feedback_messages WHERE status=?', (status,)).fetchone()
+            else:
+                row = conn.execute('SELECT COUNT(DISTINCT chat_id) AS count FROM feedback_messages').fetchone()
+            return int(row['count'] or 0)
+        finally:
+            conn.close()
+
+    def list_feedback_messages(self, status=None, limit=10):
+        conn = self.connect()
+        try:
+            if status:
+                rows = conn.execute('SELECT * FROM feedback_messages WHERE status=? ORDER BY created_at ASC LIMIT ?', (status, int(limit))).fetchall()
+            else:
+                rows = conn.execute('SELECT * FROM feedback_messages ORDER BY created_at DESC LIMIT ?', (int(limit),)).fetchall()
+            return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
+    def get_feedback_message(self, message_id):
+        conn = self.connect()
+        try:
+            row = conn.execute('SELECT * FROM feedback_messages WHERE id=?', (int(message_id),)).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    def mark_feedback_replied(self, message_id, reply):
+        conn = self.connect()
+        try:
+            conn.execute('UPDATE feedback_messages SET reply=?, status=?, replied_at=? WHERE id=?', (str(reply or '').strip(), 'replied', now_ts(), int(message_id)))
+            conn.commit()
+        finally:
+            conn.close()
