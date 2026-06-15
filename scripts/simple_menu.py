@@ -166,8 +166,7 @@ def print_menu():
     print('2. 查看 srv_id')
     print('3. 查看 bind_code')
     print('4. 自动更新程序')
-    print('5. 查看程序端口')
-    print('6. 编辑绑定端口')
+    print('5. 修改通信端口')
     print('0. 退出')
 
 
@@ -181,13 +180,11 @@ def handle_choice(choice):
     elif choice == '4':
         update_program()
     elif choice == '5':
-        show_bind_port()
-    elif choice == '6':
         edit_bind_port()
     elif choice == '0':
         return False
     else:
-        print('无效选择，请输入 0-6。')
+        print('无效选择，请输入 0-5。')
     return True
 
 
