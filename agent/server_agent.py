@@ -65,10 +65,6 @@ def make_bind_code():
 
 
 def get_default_bind_host(controller_url):
-    parsed = urllib.parse.urlparse(controller_url or '')
-    host = parsed.hostname or ''
-    if host and host not in ('127.0.0.1', 'localhost'):
-        return host
     return get_primary_ip()
 
 
@@ -154,7 +150,7 @@ def print_server_id_info(config):
 def api_request(config, path, payload=None, auth=True, timeout=20):
     url = config['controller_url'].rstrip('/') + path
     data = json.dumps(payload or {}, ensure_ascii=False).encode('utf-8')
-    headers = {'Content-Type': 'application/json'}
+    headers = {'Content-Type': 'application/json', 'User-Agent': 'simplemoitor-agent/1.0'}
     if auth:
         headers['X-Server-Id'] = str(config.get('server_id'))
         headers['X-Agent-Secret'] = str(config.get('agent_secret'))

@@ -78,6 +78,7 @@ echo ""
 
 # ── 3. 安装快捷命令 ──
 echo "[3/5] 安装快捷命令..."
+mkdir -p /www
 cat > /www/srvid <<EOF
 #!/bin/bash
 $PYTHON_BIN $BASE_DIR/agent/server_agent.py id "\$@"
