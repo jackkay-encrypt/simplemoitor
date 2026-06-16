@@ -125,7 +125,7 @@ echo ""
 
 # ── 5. 同步端口到 Controller ──
 echo "[5/5] 同步绑定信息到 Controller..."
-if "$PYTHON_BIN" "$BASE_DIR/agent/server_agent.py" --once 2>/dev/null; then
+if "$PYTHON_BIN" "$BASE_DIR/agent/server_agent.py" --once; then
   echo "  ✓ 已成功同步到 Controller"
 else
   echo "  ! 同步失败（Controller 可能未启动），端口信息将在下次定时任务时自动同步"
