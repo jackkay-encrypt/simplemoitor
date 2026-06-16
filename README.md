@@ -12,8 +12,6 @@ Cloudflare Worker (Controller)
 Telegram Bot
 ```
 
-> Controller 程序为独立私仓，不对外公开。
-
 ## 快速安装
 
 ```bash
