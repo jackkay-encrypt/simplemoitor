@@ -27,6 +27,45 @@ DEFAULT_CONFIG_PATH = os.path.join(BASE_DIR, 'agent', 'config.json')
 DEFAULT_LOG_PATH = os.path.join(BASE_DIR, 'runtime', 'agent.log')
 
 
+def _dns_resolve(hostname):
+    """Fallback DNS resolver using raw UDP query to public DNS servers."""
+    import struct
+    for dns_server in ['8.8.8.8', '1.1.1.1', '223.5.5.5']:
+        try:
+            # Build DNS query for A record
+            tid = 0x1234
+            query = struct.pack('>HHHHHH', tid, 0x0100, 1, 0, 0, 0)
+            for part in hostname.split('.'):
+                query += struct.pack('B', len(part)) + part.encode()
+            query += b'\x00' + struct.pack('>HH', 1, 1)  # Type A, Class IN
+
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(3)
+            sock.sendto(query, (dns_server, 53))
+            data, _ = sock.recvfrom(1024)
+            sock.close()
+
+            # Parse response - skip header (12 bytes), question section
+            pos = 12
+            while data[pos] != 0:
+                pos += data[pos] + 1
+            pos += 5  # skip null byte + type(2) + class(2)
+
+            # Read answer records
+            ancount = struct.unpack('>H', data[6:8])[0]
+            if ancount > 0:
+                # Skip name pointer (2 bytes) + type(2) + class(2) + ttl(4) + rdlength(2)
+                pos += 2 + 2 + 2 + 4
+                rdlength = struct.unpack('>H', data[pos:pos+2])[0]
+                pos += 2
+                if rdlength == 4:
+                    ip = '.'.join(str(b) for b in data[pos:pos+4])
+                    return ip
+        except Exception:
+            continue
+    return None
+
+
 def write_log(message):
     line = '[{}] {}\n'.format(time.strftime('%Y-%m-%d %H:%M:%S'), message)
     try:
@@ -151,8 +190,23 @@ def api_request(config, path, payload=None, auth=True, timeout=20):
         headers['X-Server-Id'] = str(config.get('server_id'))
         headers['X-Agent-Secret'] = str(config.get('agent_secret'))
     request = urllib.request.Request(url, data=data, headers=headers, method='POST')
-    with urllib.request.urlopen(request, timeout=timeout, context=_SSL_CTX) as response:
-        body = response.read().decode('utf-8')
+    try:
+        with urllib.request.urlopen(request, timeout=timeout, context=_SSL_CTX) as response:
+            body = response.read().decode('utf-8')
+    except urllib.error.URLError as e:
+        if 'name resolution' in str(e).lower() or 'getaddrinfo' in str(e).lower():
+            parsed = urllib.parse.urlparse(url)
+            ip = _dns_resolve(parsed.hostname)
+            if ip:
+                new_url = url.replace(parsed.hostname, ip)
+                headers['Host'] = parsed.hostname
+                request = urllib.request.Request(new_url, data=data, headers=headers, method='POST')
+                with urllib.request.urlopen(request, timeout=timeout, context=_SSL_CTX) as response:
+                    body = response.read().decode('utf-8')
+            else:
+                raise
+        else:
+            raise
     result = json.loads(body)
     if not result.get('ok'):
         raise RuntimeError(result.get('error') or result.get('message') or body)
