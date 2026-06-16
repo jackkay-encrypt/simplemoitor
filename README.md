@@ -4,11 +4,13 @@
 
 ## 快速安装
 
+在终端直接输入命令即可完成安装。
+
 ```bash
 git clone https://github.com/jackkay-encrypt/simplemoitor.git /simplemoitor && cd /simplemoitor && bash agent/install.sh https://simplemoitor.jackkay8826.workers.dev
 ```
 
-安装完成后执行 `/www/srvid` 获取绑定信息，然后在 Telegram Bot 中点击【绑定服务器】粘贴即可。
+安装完成后自动获取绑定信息，然后在 Telegram Bot 【@simplemoitor_bot】中点击【绑定服务器】粘贴即可。
 
 ## 功能
 
