@@ -59,7 +59,6 @@ git clone https://github.com/jackkay-encrypt/simplemoitor.git /simplemoitor && c
 ### v1.2 (2026-06-16)
 - 服务器离线检测：超过 5 分钟未汇报显示异常并建议解绑
 - simple 管理菜单显示当前程序版本号
-- 所有「监控」字眼替换为「管理」
 
 ### v1.1 (2026-06-16)
 - 新增内置 DNS 回退解析，无系统 DNS 也能正常连接 Controller
