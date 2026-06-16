@@ -36,12 +36,6 @@ git clone https://github.com/jackkay-encrypt/simplemoitor.git /simplemoitor && c
 - 兑换码兑换 VIP
 - 反馈提交
 
-**管理 Bot（需登录）**
-- VIP 会员管理（查看/搜索/延期/删除）
-- 兑换码生成（1/3/7/30/90天或自定义）
-- 收款地址和价格配置
-- 留言管理与回复
-
 ## 终端命令
 
 | 命令 | 说明 |
@@ -49,19 +43,6 @@ git clone https://github.com/jackkay-encrypt/simplemoitor.git /simplemoitor && c
 | `simple` | 管理菜单 |
 | `/www/srvid` | 查看 srv_id 和绑定码 |
 | `crontab -l` | 查看定时任务 |
-
-## 项目结构
-
-```
-simplemoitor/
-├── agent/           # Agent 监控程序 (Python)
-├── common/          # 公共模块
-├── scripts/         # 管理脚本
-├── cf-worker/       # CF Worker Controller (TypeScript)
-│   ├── src/         # 源码
-│   └── migrations/  # D1 数据库迁移
-└── requirements.txt
-```
 
 ## 环境要求
 
