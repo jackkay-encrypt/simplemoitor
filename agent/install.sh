@@ -18,18 +18,6 @@ if [ -z "$PYTHON_BIN" ]; then
   exit 1
 fi
 
-# ── 0. 检查 DNS ──
-if ! python3 -c "import socket; socket.getaddrinfo('github.com', 443)" 2>/dev/null; then
-  echo "[0] DNS 解析失败，正在修复..."
-  if ! grep -q "^nameserver" /etc/resolv.conf 2>/dev/null; then
-    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-    echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-    echo "  ✓ 已添加公共 DNS (8.8.8.8, 1.1.1.1)"
-  else
-    echo "  ! /etc/resolv.conf 已有 nameserver 但仍无法解析，请手动检查网络"
-  fi
-fi
-
 echo "=========================================="
 echo "  simplemoitor Agent 安装程序"
 echo "=========================================="
