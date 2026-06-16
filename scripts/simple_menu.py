@@ -160,7 +160,7 @@ def update_program():
 
 def uninstall_program():
     print()
-    print('警告：此操作将完全删除 simplemoitor 监控程序！')
+    print('警告：此操作将完全删除 simplemoitor 管理程序！')
     print('包括：程序文件、配置文件、定时任务、快捷命令。')
     print('此操作不可恢复。')
     print()

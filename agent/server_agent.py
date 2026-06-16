@@ -323,7 +323,7 @@ def run_daemon(config_path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='多服务器 Telegram 监控 Agent')
+    parser = argparse.ArgumentParser(description='多服务器 Telegram 管理 Agent')
     parser.add_argument('command', nargs='?', choices=['id', 'bind-info'], help='id: 显示 srv_id 和绑定码；bind-info: 显示完整绑定信息')
     parser.add_argument('--config', default=DEFAULT_CONFIG_PATH)
     parser.add_argument('--init-config', action='store_true')
