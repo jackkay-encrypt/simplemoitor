@@ -287,7 +287,9 @@ def handle_commands(config, commands, config_path=DEFAULT_CONFIG_PATH):
 
 def run_once(config_path):
     config = init_config(config_path, show_bind_info=False)
-    register(config)
+    # Skip register if already bound (saves 1 HTTP call)
+    if not config.get('bound'):
+        register(config)
     heartbeat(config, config_path)
     commands = pull_commands(config, config_path)
     handle_commands(config, commands, config_path)

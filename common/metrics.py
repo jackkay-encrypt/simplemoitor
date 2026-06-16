@@ -64,7 +64,7 @@ def get_memory_info():
     }
 
 
-def get_cpu_percent(interval=1):
+def get_cpu_percent(interval=0.1):
     if psutil:
         return float(psutil.cpu_percent(interval=interval))
 
