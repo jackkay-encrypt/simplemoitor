@@ -195,16 +195,9 @@ def api_request(config, path, payload=None, auth=True, timeout=20):
             body = response.read().decode('utf-8')
     except urllib.error.URLError as e:
         if 'name resolution' in str(e).lower() or 'getaddrinfo' in str(e).lower():
-            parsed = urllib.parse.urlparse(url)
-            ip = _dns_resolve(parsed.hostname)
-            if ip:
-                new_url = url.replace(parsed.hostname, ip)
-                headers['Host'] = parsed.hostname
-                request = urllib.request.Request(new_url, data=data, headers=headers, method='POST')
-                with urllib.request.urlopen(request, timeout=timeout, context=_SSL_CTX) as response:
-                    body = response.read().decode('utf-8')
-            else:
-                raise
+            _patch_dns()
+            with urllib.request.urlopen(request, timeout=timeout, context=_SSL_CTX) as response:
+                body = response.read().decode('utf-8')
         else:
             raise
     result = json.loads(body)
