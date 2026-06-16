@@ -1,4 +1,4 @@
-# SimpleMoitor v1.0
+# SimpleMoitor v1.1
 
 轻量级服务器安全汇报工具。安装到服务器后，自动采集系统指标并通过 Telegram Bot 定时汇报。
 
@@ -53,6 +53,23 @@ git clone https://github.com/jackkay-encrypt/simplemoitor.git /simplemoitor && c
 ## 环境要求
 
 - Linux + Python 3.7+ + cron
+
+## 更新日志
+
+### v1.1 (2026-06-16)
+- 新增内置 DNS 回退解析，无系统 DNS 也能正常连接 Controller
+- CPU 采样间隔从 1s 优化至 0.1s，Agent 执行速度提升约 60%
+- 已绑定服务器跳过 register 调用，减少 1 次 HTTP 请求
+- 安装脚本不再隐藏注册错误信息，便于排查问题
+- `simple` 管理菜单新增「删除插件」功能（需输入 YES 确认）
+- 绑定指令精简为 `srv_id + bind_code`，不再需要 IP 和端口
+
+### v1.0 (2026-06-15)
+- 首次发布
+- Agent 自动采集 CPU、内存、负载、运行时长等指标
+- 通过 Telegram Bot 绑定/解绑/管理服务器
+- 可配置汇报间隔和异常预警
+- 内置 DNS 回退解析，不依赖系统 resolv.conf
 
 ## License
 
