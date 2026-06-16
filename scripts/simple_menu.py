@@ -12,6 +12,13 @@ CONFIG_PATH = os.path.join(BASE_DIR, 'agent', 'config.json')
 AGENT_PATH = os.path.join(BASE_DIR, 'agent', 'server_agent.py')
 INSTALL_PATH = os.path.join(BASE_DIR, 'agent', 'install.sh')
 
+# Import version from metrics module
+sys.path.insert(0, BASE_DIR)
+try:
+    from common.metrics import APP_VERSION
+except Exception:
+    APP_VERSION = 'unknown'
+
 
 def find_python():
     preferred = '/www/server/panel/pyenv/bin/python3'
@@ -201,7 +208,7 @@ def uninstall_program():
 
 
 def print_menu():
-    print('\n=== simplemoitor 管理菜单 ===')
+    print('\n=== simplemoitor {} 管理菜单 ==='.format(APP_VERSION))
     print('1. 查看 Telegram 的绑定指令')
     print('2. 查看 srv_id')
     print('3. 查看 bind_code')

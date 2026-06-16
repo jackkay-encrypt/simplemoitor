@@ -1,7 +1,7 @@
 # coding: utf-8
 
 APP_NAME = 'SimpleMoitor'
-APP_VERSION = 'v1.1'
+APP_VERSION = 'v1.2'
 
 import datetime
 import html
