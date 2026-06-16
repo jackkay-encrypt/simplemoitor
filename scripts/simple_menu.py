@@ -158,6 +158,48 @@ def update_program():
         print('已删除临时安装文件：{}'.format(temp_dir))
 
 
+def uninstall_program():
+    print()
+    print('警告：此操作将完全删除 simplemoitor 监控程序！')
+    print('包括：程序文件、配置文件、定时任务、快捷命令。')
+    print('此操作不可恢复。')
+    print()
+    confirm = input('确认删除请输入 YES: ').strip()
+    if confirm != 'YES':
+        print('已取消删除。')
+        return
+    print()
+    # Remove crontab entries
+    try:
+        result = subprocess.run(['crontab', '-l'], capture_output=True, text=True)
+        if result.returncode == 0:
+            lines = [l for l in result.stdout.splitlines() if 'simplemoitor' not in l]
+            new_cron = chr(10).join(lines) + chr(10) if lines else ''
+            subprocess.run(['crontab', '-'], input=new_cron, text=True, capture_output=True)
+            print('✓ 已清除定时任务')
+    except Exception as e:
+        print('清除定时任务失败: {}'.format(e))
+    # Remove shortcut commands
+    for path in ['/www/srvid', '/www/simple', '/usr/local/bin/simple']:
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                print('✓ 已删除 {}'.format(path))
+            except Exception as e:
+                print('删除 {} 失败: {}'.format(path, e))
+    # Remove program directory
+    if os.path.exists(BASE_DIR):
+        try:
+            shutil.rmtree(BASE_DIR)
+            print('✓ 已删除程序目录 {}'.format(BASE_DIR))
+        except Exception as e:
+            print('删除程序目录失败: {}'.format(e))
+            print('请手动执行: rm -rf {}'.format(BASE_DIR))
+    print()
+    print('simplemoitor 已完全卸载。')
+    sys.exit(0)
+
+
 def print_menu():
     print('\n=== simplemoitor 管理菜单 ===')
     print('1. 查看 Telegram 的绑定指令')
@@ -165,6 +207,7 @@ def print_menu():
     print('3. 查看 bind_code')
     print('4. 自动更新程序')
     print('5. 修改通信端口')
+    print('6. 删除插件')
     print('0. 退出')
 
 
@@ -179,10 +222,12 @@ def handle_choice(choice):
         update_program()
     elif choice == '5':
         edit_bind_port()
+    elif choice == '6':
+        uninstall_program()
     elif choice == '0':
         return False
     else:
-        print('无效选择，请输入 0-5。')
+        print('无效选择，请输入 0-6。')
     return True
 
 
